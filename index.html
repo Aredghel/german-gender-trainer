@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#4f46e5">
+
+<title>German Gender Trainer</title>
+
+<link rel="manifest" href="manifest.json">
+
+<style>
+:root{
+  --blue:#2563eb;
+  --pink:#ec4899;
+  --green:#16a34a;
+  --purple:#4f46e5;
+}
+
+*{
+  box-sizing:border-box;
+  margin:0;
+  padding:0;
+}
+
+body{
+  font-family:system-ui,sans-serif;
+  background:#f8fafc;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  padding:15px;
+}
+
+.card{
+  width:100%;
+  max-width:420px;
+  height:700px;
+  background:white;
+  border-radius:24px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  box-shadow:0 10px 30px rgba(0,0,0,.15);
+}
+
+.title{
+  text-align:center;
+  font-size:1.8rem;
+  font-weight:800;
+  color:var(--purple);
+}
+
+.stats{
+  text-align:center;
+  margin-top:10px;
+  color:#475569;
+  font-weight:600;
+}
+
+.noun{
+  flex:0 0 140px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-size:2.8rem;
+  font-weight:800;
+}
+
+.buttons{
+  text-align:center;
+}
+
+.btn{
+  border:none;
+  border-radius:14px;
+  padding:14px 20px;
+  margin:5px;
+  color:white;
+  font-size:1rem;
+  font-weight:700;
+}
+
+.der{background:var(--blue);}
+.die{background:var(--pink);}
+.das{background:var(--green);}
+
+.feedback-area{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+
+.feedback{
+  width:100%;
+  min-height:220px;
+  border-radius:18px;
+  padding:20px;
+  text-align:center;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+.correct{
+  background:#dcfce7;
+  border:3px solid #22c55e;
+}
+
+.wrong{
+  background:#fee2e2;
+  border:3px solid #ef4444;
+}
+
+.result{
+  font-size:2rem;
+  font-weight:800;
+}
+
+.gender{
+  font-size:1.6rem;
+  font-weight:800;
+  margin-top:10px;
+}
+
+.masculine{color:var(--blue);}
+.feminine{color:var(--pink);}
+.neuter{color:var(--green);}
+
+.info{
+  margin-top:10px;
+  font-size:1.15rem;
+}
+
+.hint{
+  margin-top:15px;
+  color:#64748b;
+}
+
+.hidden{
+  visibility:hidden;
+}
+
+@media (prefers-color-scheme: dark){
+  body{
+    background:#111827;
+  }
+
+  .card{
+    background:#1f2937;
+    color:white;
+  }
+
+  .stats{
+    color:#cbd5e1;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="card" id="card">
+
+  <div class="title">
+    🇩🇪 German Gender Trainer
+  </div>
+
+  <div id="stats" class="stats">
+    Loading...
+  </div>
+
+  <div id="noun" class="noun">
+    ...
+  </div>
+
+  <div id="buttons" class="buttons">
+    <button class="btn der">DER</button>
+    <button class="btn die">DIE</button>
+    <button class="btn das">DAS</button>
+  </div>
+
+  <div class="feedback-area">
+    <div id="feedback"></div>
+  </div>
+
+</div>
+
+<script src="vocabulary-part1.js"></script>
+<script src="vocabulary-part2.js"></script>
+<script src="vocabulary-part3.js"></script>
+<script src="vocabulary-part4.js"></script>
+
+<script>
+
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('service-worker.js');
+}
+
+let vocabulary = [
+  ...(window.vocab1 || []),
+  ...(window.vocab2 || []),
+  ...(window.vocab3 || []),
+  ...(window.vocab4 || [])
+];
+
+let deck = [...vocabulary].sort(() => Math.random()-0.5);
+
+let index = 0;
+let score = 0;
+let answered = 0;
+let waitingForNext = false;
+
+const nounEl = document.getElementById('noun');
+const statsEl = document.getElementById('stats');
+const feedbackEl = document.getElementById('feedback');
+const card = document.getElementById('card');
+
+function updateStats(){
+  statsEl.textContent =
+    `Word ${index + 1} / ${deck.length} • Score ${score}/${answered}`;
+}
+
+function showWord(){
+
+  if(index >= deck.length){
+
+    nounEl.textContent = "🎉 Finished";
+
+    feedbackEl.innerHTML =
+      `<div class="feedback correct">
+        <div class="result">Completed!</div>
+        <div class="info">
+          Final Score: ${score}/${answered}
+        </div>
+      </div>`;
+
+    document.getElementById('buttons').style.display = 'none';
+
+    return;
+  }
+
+  nounEl.textContent = deck[index].noun;
+  feedbackEl.innerHTML = "";
+
+  waitingForNext = false;
+
+  updateStats();
+}
+
+function answer(article){
+
+  if(waitingForNext) return;
+
+  const word = deck[index];
+
+  answered++;
+
+  let correct = article === word.gender;
+
+  if(correct){
+    score++;
+  }
+
+  let colorClass =
+      word.gender === "der" ? "masculine"
+    : word.gender === "die" ? "feminine"
+    : "neuter";
+
+  feedbackEl.innerHTML = `
+    <div class="feedback ${correct ? "correct":"wrong"}">
+      <div class="result">
+        ${correct ? "✅ CORRECT!" : "❌ WRONG!"}
+      </div>
+
+      <div class="gender ${colorClass}">
+        ${word.gender} ${word.noun}
+      </div>
+
+      <div class="info">
+        Plural: <strong>${word.plural}</strong>
+      </div>
+
+      <div class="info">
+        English: <strong>${word.english}</strong>
+      </div>
+
+      <div class="hint">
+        Tap anywhere to continue
+      </div>
+    </div>
+  `;
+
+  waitingForNext = true;
+  updateStats();
+}
+
+document.querySelector(".der")
+  .addEventListener("click",(e)=>{
+    e.stopPropagation();
+    answer("der");
+  });
+
+document.querySelector(".die")
+  .addEventListener("click",(e)=>{
+    e.stopPropagation();
+    answer("die");
+  });
+
+document.querySelector(".das")
+  .addEventListener("click",(e)=>{
+    e.stopPropagation();
+    answer("das");
+  });
+
+card.addEventListener("click",()=>{
+
+  if(!waitingForNext) return;
+
+  index++;
+  showWord();
+
+});
+
+showWord();
+
+</script>
+
+</body>
+</html>
