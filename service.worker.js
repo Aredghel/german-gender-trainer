@@ -1,19 +1,18 @@
-const CACHE_NAME = "german-gender-trainer-v1";
+const CACHE_NAME = "german-a1-trainer-v1";
 
-const FILES_TO_CACHE = [
+const FILES = [
   "./",
   "./index.html",
   "./manifest.json",
   "./vocabulary-part1.js",
-  "./vocabulary-part2.js",
-  "./vocabulary-part3.js",
-  "./vocabulary-part4.js"
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(FILES_TO_CACHE))
+      .then(cache => cache.addAll(FILES))
   );
 
   self.skipWaiting();
@@ -43,38 +42,24 @@ self.addEventListener("fetch", event => {
 
   event.respondWith(
     caches.match(event.request)
-      .then(cachedResponse => {
+      .then(response => {
 
-        if (cachedResponse) {
-          return cachedResponse;
+        if (response) {
+          return response;
         }
 
         return fetch(event.request)
           .then(networkResponse => {
 
-            if (
-              !networkResponse ||
-              networkResponse.status !== 200
-            ) {
-              return networkResponse;
-            }
-
-            const responseClone =
-              networkResponse.clone();
+            const copy = networkResponse.clone();
 
             caches.open(CACHE_NAME)
               .then(cache => {
-                cache.put(
-                  event.request,
-                  responseClone
-                );
+                cache.put(event.request, copy);
               });
 
             return networkResponse;
           });
-      })
-      .catch(() => {
-        return caches.match("./index.html");
       })
   );
 });
